@@ -52,7 +52,7 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f5f4f0;color:#1a
 .pills-bar{background:#f0efe8;padding:6px 24px;font-size:13px;color:#999;display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:32px;border-bottom:0.5px solid #e8e7e0}
 .pill{background:#534AB7;color:#fff;padding:2px 9px;border-radius:99px;font-size:13px;font-weight:500}
 .pill-gen{background:#1D9E75}.pill-pdv{background:#EF9F27;color:#1a1a18}
-.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;padding:18px 28px}
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:18px 28px}
 .kpi-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;padding:18px 28px}
 .kpi{background:#fff;border-radius:10px;padding:18px 20px}
 .kpi-label{font-size:14px;color:#999;margin-bottom:6px}
@@ -159,7 +159,6 @@ footer{text-align:center;font-size:13px;color:#bbb;padding:14px 24px;border-top:
   <div class="kpi-row">
     <div class="kpi"><div class="kpi-label">Ventas s/impuesto</div><div class="kpi-value" id="kv-total">—</div><div class="kpi-sub" id="kv-count">—</div></div>
     <div class="kpi"><div class="kpi-label">Unidades vendidas</div><div class="kpi-value" id="kv-units">—</div><div class="kpi-sub" id="kv-ticket">—</div></div>
-    <div class="kpi"><div class="kpi-label">Margen bruto est.</div><div class="kpi-value" id="kv-margen">—</div><div class="kpi-sub"><span class="kpi-tag tag-green" id="kv-margenp">—</span></div></div>
     <div class="kpi"><div class="kpi-label">Mejor día</div><div class="kpi-value" id="kv-dia">—</div><div class="kpi-sub" id="kv-dia-v">—</div></div>
     <div class="kpi"><div class="kpi-label">Hora pico</div><div class="kpi-value" id="kv-hora">—</div><div class="kpi-sub"><span class="kpi-tag tag-amber" id="kv-horav">—</span></div></div>
     <div class="kpi" style="border-left:3px solid #D85A30">
@@ -360,7 +359,9 @@ const COL_TIPO = {'CORTESIA PRODUCCION':'#D85A30','CORTESIA OPERACION':'#534AB7'
 const COL_EMP  = ['#1D9E75','#2DC995','#5DCAA5','#639922','#BA7517','#0F6E56','#3B8C6E','#9FE1CB','#04342C'];
 const COL_AL   = ['#D85A30','#EF9F27','#BA7517','#F5C689'];
 const COL_ESP  = ['#534AB7','#1D9E75','#EF9F27','#D85A30','#378ADD','#888780','#D4537E','#639922','#BA7517','#0F6E56','#993C1D','#185FA5','#3B6D11'];
-const COL_DIAS = ['#AFA9EC','#534AB7','#3C3489','#7F77DD'];
+const COL_PDV  = ['#534AB7','#1D9E75','#EF9F27','#D85A30','#378ADD','#D4537E','#639922','#0F6E56','#BA7517','#993C1D','#185FA5','#3B6D11','#888780','#26215C'];
+const COL_DIAS = ['rgba(83,74,183,0.55)','rgba(29,158,117,0.55)','rgba(239,159,39,0.55)','rgba(216,90,48,0.55)'];
+const COL_DIAS_BORDER = ['#534AB7','#1D9E75','#EF9F27','#D85A30'];
 const tc='rgba(0,0,0,.38)', gc='rgba(0,0,0,.06)';
 
 const fmtM=v=>'$'+(v/1e6).toFixed(1)+'M';
@@ -446,20 +447,18 @@ function renderVentas(){
   document.getElementById('kv-count').textContent=f.length.toLocaleString()+' transacciones';
   document.getElementById('kv-units').textContent=fmtU(tu);
   document.getElementById('kv-ticket').textContent='ticket prom '+fmtC(f.length?tv/f.length:0);
-  document.getElementById('kv-margen').textContent=fmtC(mg);
-  document.getElementById('kv-margenp').textContent=mp+'% margen';
   document.getElementById('kv-dia').textContent=DIAS_L[DIAS.indexOf(bd)];
   document.getElementById('kv-dia-v').textContent=fmtC(byD[bd]);
   document.getElementById('kv-hora').textContent=bh+'h';
   document.getElementById('kv-horav').textContent=fmtC(byH[bh]);
   document.getElementById('count-label').textContent=f.length.toLocaleString()+' / '+RAW.length.toLocaleString()+' filas';
   killPfx('v');
-  charts.vDias=new Chart(document.getElementById('cDias'),{type:'bar',data:{labels:DIAS_L,datasets:[{label:'Ventas s/imp',data:DIAS.map(d=>byD[d]),backgroundColor:COL_DIAS,borderRadius:4,borderSkipped:false,yAxisID:'y'},{label:'Unidades',data:DIAS.map(d=>byDu[d]),type:'line',borderColor:'#EF9F27',backgroundColor:'transparent',pointBackgroundColor:'#EF9F27',pointRadius:4,borderWidth:2,yAxisID:'y2'}]},options:baseV(c=>c.datasetIndex===0?' '+fmtC(c.parsed.y):' '+fmtU(c.parsed.y)+' uds',true)});
+  charts.vDias=new Chart(document.getElementById('cDias'),{type:'bar',data:{labels:DIAS_L,datasets:[{label:'Ventas s/imp',data:DIAS.map(d=>byD[d]),backgroundColor:COL_DIAS,borderColor:COL_DIAS_BORDER,borderWidth:2,borderRadius:4,borderSkipped:false,yAxisID:'y'},{label:'Unidades',data:DIAS.map(d=>byDu[d]),type:'line',borderColor:'#1a1a18',backgroundColor:'transparent',pointBackgroundColor:COL_DIAS_BORDER,pointBorderColor:'#fff',pointBorderWidth:2,pointRadius:6,borderWidth:2.5,yAxisID:'y2'}]},options:baseV(c=>c.datasetIndex===0?' '+fmtC(c.parsed.y):' '+fmtU(c.parsed.y)+' uds',true)});
   charts.vHoras=new Chart(document.getElementById('cHoras'),{type:'line',data:{labels:HORAS.map(h=>h+'h'),datasets:[{label:'Ventas s/imp',data:HORAS.map(h=>byH[h]),borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,.1)',fill:true,tension:.4,pointRadius:0,borderWidth:2,yAxisID:'y'},{label:'Unidades',data:HORAS.map(h=>byHu[h]),borderColor:'#EF9F27',backgroundColor:'transparent',tension:.4,pointRadius:0,borderWidth:2,borderDash:[4,3],yAxisID:'y2'}]},options:{...baseV(c=>c.datasetIndex===0?' '+fmtC(c.parsed.y):' '+fmtU(c.parsed.y)+' uds',true),scales:{x:{ticks:{color:tc,font:{size:11},maxTicksLimit:8,autoSkip:true},grid:{color:gc}},y:{ticks:{color:tc,font:{size:11},callback:v=>fmtM(v)},grid:{color:gc}},y2:{ticks:{color:'#BA7517',font:{size:11},callback:v=>fmtU(v)},grid:{display:false},position:'right'}}}});
   const byP={},byPu={};f.forEach(r=>{byP[r[4]]=(byP[r[4]]||0)+r[0];byPu[r[4]]=(byPu[r[4]]||0)+r[8];});
   const tP=Object.entries(byP).sort((a,b)=>b[1]-a[1]).slice(0,12);
   document.getElementById('pdv-wrap').style.height=Math.max(180,tP.length*24)+'px';
-  charts.vPDV=new Chart(document.getElementById('cPDV'),{type:'bar',data:{labels:tP.map(([k])=>shrt(k)),datasets:[{data:tP.map(([,v])=>v),backgroundColor:tP.map((_,i)=>i===0?'#534AB7':i<4?'#7F77DD':'#AFA9EC'),borderRadius:3,borderSkipped:false}]},options:baseH(c=>{const u=byPu[tP[c.dataIndex][0]]||0;return ' '+fmtC(c.parsed.x)+(u?'  ·  '+fmtU(u)+' uds':'');})});
+  charts.vPDV=new Chart(document.getElementById('cPDV'),{type:'bar',data:{labels:tP.map(([k])=>shrt(k)),datasets:[{data:tP.map(([,v])=>v),backgroundColor:tP.map((_,i)=>COL_PDV[i%COL_PDV.length]),borderRadius:3,borderSkipped:false}]},options:baseH(c=>{const u=byPu[tP[c.dataIndex][0]]||0;return ' '+fmtC(c.parsed.x)+(u?'  ·  '+fmtU(u)+' uds':'');})});
   const byG={},byGu={};f.forEach(r=>{byG[r[6]]=(byG[r[6]]||0)+r[0];byGu[r[6]]=(byGu[r[6]]||0)+r[8];});
   const gE=Object.entries(byG).sort((a,b)=>b[1]-a[1]);
   charts.vGen=new Chart(document.getElementById('cGen'),{type:'bar',data:{labels:gE.map(([k])=>k),datasets:[{label:'Ventas s/imp',data:gE.map(([,v])=>v),backgroundColor:gE.map(([k])=>COL_GEN[k]||'#888'),borderRadius:5,borderSkipped:false,yAxisID:'y'},{label:'Unidades',data:gE.map(([k])=>byGu[k]||0),type:'line',borderColor:'#EF9F27',backgroundColor:'transparent',pointBackgroundColor:'#EF9F27',pointRadius:5,borderWidth:2,yAxisID:'y2'}]},options:baseV(c=>c.datasetIndex===0?' '+fmtC(c.parsed.y):' '+fmtU(c.parsed.y)+' uds',true)});
