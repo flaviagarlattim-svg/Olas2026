@@ -169,8 +169,37 @@ footer{text-align:center;font-size:13px;color:#bbb;padding:14px 24px;border-top:
     </div>
   </div>
   <div class="charts-2">
-    <div class="card"><div class="card-title">Ventas y unidades por día</div><div class="card-sub">Barras = venta s/imp · Línea = unidades</div><div style="position:relative;height:260px"><canvas id="cDias"></canvas></div></div>
-    <div class="card"><div class="card-title">Ventas y unidades por hora</div><div class="card-sub">Azul = venta s/imp · Naranja = unidades</div><div style="position:relative;height:260px"><canvas id="cHoras"></canvas></div></div>
+    <div class="card"><div class="card-title">Ventas y unidades por día</div><div class="card-sub">Barras = venta s/imp · Línea = unidades</div><div style="position:relative;height:300px"><canvas id="cDias"></canvas></div></div>
+    <div class="card">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px">
+        <div>
+          <div class="card-title">Ventas y unidades por hora</div>
+          <div class="card-sub" style="margin-bottom:6px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <span style="display:flex;align-items:center;gap:5px">
+              <svg width="28" height="10" style="flex-shrink:0"><line x1="0" y1="5" x2="28" y2="5" stroke="#534AB7" stroke-width="2.5"/></svg>
+              <span style="font-size:12px;color:#666">Ventas s/imp (línea continua)</span>
+            </span>
+            <span style="display:flex;align-items:center;gap:5px">
+              <svg width="28" height="10" style="flex-shrink:0"><line x1="0" y1="5" x2="28" y2="5" stroke="#888" stroke-width="2" stroke-dasharray="5,3"/></svg>
+              <span style="font-size:12px;color:#666">Unidades vendidas (línea punteada)</span>
+            </span>
+          </div>
+        </div>
+        <div id="horas-filter" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span style="font-size:11px;color:#999;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Categoría:</span>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#333;cursor:pointer;padding:3px 8px;border-radius:99px;border:1px solid #ccc;background:#fff;user-select:none">
+            <input type="checkbox" value="BAR"          onchange="renderHoras()" checked style="accent-color:#534AB7;cursor:pointer"> BAR
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#333;cursor:pointer;padding:3px 8px;border-radius:99px;border:1px solid #ccc;background:#fff;user-select:none">
+            <input type="checkbox" value="FOOD"         onchange="renderHoras()" checked style="accent-color:#1D9E75;cursor:pointer"> FOOD
+          </label>
+          <label style="display:flex;align-items:center;gap:4px;font-size:12px;color:#333;cursor:pointer;padding:3px 8px;border-radius:99px;border:1px solid #ccc;background:#fff;user-select:none">
+            <input type="checkbox" value="RECEPCIÓN"    onchange="renderHoras()" checked style="accent-color:#EF9F27;cursor:pointer"> RECEPCIÓN
+          </label>
+        </div>
+      </div>
+      <div style="position:relative;height:260px"><canvas id="cHoras"></canvas></div>
+    </div>
   </div>
   <div class="chart-full"><div class="card"><div class="card-title">Puntos de venta</div><div class="card-sub">Venta s/imp + unidades</div><div style="position:relative;height:280px" id="pdv-wrap"><canvas id="cPDV"></canvas></div></div></div>
   <div class="section-label">Categoría general</div>
@@ -440,9 +469,19 @@ function renderVentas(){
   const byD={},byDu={};DIAS.forEach(d=>{byD[d]=0;byDu[d]=0;});
   f.forEach(r=>{if(byD[r[3]]!==undefined){byD[r[3]]+=r[0];byDu[r[3]]+=r[8];}});
   const bd=DIAS.reduce((a,b)=>byD[a]>byD[b]?a:b);
-  const byH={},byHu={};HORAS.forEach(h=>{byH[h]=0;byHu[h]=0;});
-  f.forEach(r=>{byH[r[2]]=(byH[r[2]]||0)+r[0];byHu[r[2]]=(byHu[r[2]]||0)+r[8];});
-  const bh=HORAS.reduce((a,b)=>byH[a]>byH[b]?a:b);
+  // byH/byHu now computed in renderHoras() — store filtered data globally
+  window._fHoras = f;
+  // Pre-style all filter labels as active (all 3 checked by default)
+  document.querySelectorAll('#horas-filter input[type=checkbox]').forEach(c=>{
+    const COL_MAP={BAR:'#534AB7',FOOD:'#1D9E75','RECEPCIÓN':'#EF9F27'};
+    const lbl=c.closest('label');
+    lbl.style.background=COL_MAP[c.value]||'#534AB7';
+    lbl.style.color='#fff';
+    lbl.style.borderColor=COL_MAP[c.value]||'#534AB7';
+  });
+  renderHoras();
+  const _bhMap={};HORAS.forEach(h=>_bhMap[h]=0);f.forEach(r=>{_bhMap[r[2]]=(_bhMap[r[2]]||0)+r[0];});
+  const bh=HORAS.reduce((a,b)=>_bhMap[a]>_bhMap[b]?a:b);
   document.getElementById('kv-total').textContent=fmtC(tv);
   document.getElementById('kv-count').textContent=f.length.toLocaleString()+' transacciones';
   document.getElementById('kv-units').textContent=fmtU(tu);
@@ -450,29 +489,264 @@ function renderVentas(){
   document.getElementById('kv-dia').textContent=DIAS_L[DIAS.indexOf(bd)];
   document.getElementById('kv-dia-v').textContent=fmtC(byD[bd]);
   document.getElementById('kv-hora').textContent=bh+'h';
-  document.getElementById('kv-horav').textContent=fmtC(byH[bh]);
+  document.getElementById('kv-horav').textContent=fmtC(_bhMap[bh]);
   document.getElementById('count-label').textContent=f.length.toLocaleString()+' / '+RAW.length.toLocaleString()+' filas';
   killPfx('v');
-  charts.vDias=new Chart(document.getElementById('cDias'),{type:'bar',data:{labels:DIAS_L,datasets:[{label:'Ventas s/imp',data:DIAS.map(d=>byD[d]),backgroundColor:COL_DIAS,borderColor:COL_DIAS_BORDER,borderWidth:2,borderRadius:4,borderSkipped:false,yAxisID:'y'},{label:'Unidades',data:DIAS.map(d=>byDu[d]),type:'line',borderColor:'#1a1a18',backgroundColor:'transparent',pointBackgroundColor:COL_DIAS_BORDER,pointBorderColor:'#fff',pointBorderWidth:2,pointRadius:6,borderWidth:2.5,yAxisID:'y2'}]},options:baseV(c=>c.datasetIndex===0?' '+fmtC(c.parsed.y):' '+fmtU(c.parsed.y)+' uds',true)});
-  charts.vHoras=new Chart(document.getElementById('cHoras'),{type:'line',data:{labels:HORAS.map(h=>h+'h'),datasets:[{label:'Ventas s/imp',data:HORAS.map(h=>byH[h]),borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,.1)',fill:true,tension:.4,pointRadius:0,borderWidth:2,yAxisID:'y'},{label:'Unidades',data:HORAS.map(h=>byHu[h]),borderColor:'#EF9F27',backgroundColor:'transparent',tension:.4,pointRadius:0,borderWidth:2,borderDash:[4,3],yAxisID:'y2'}]},options:{...baseV(c=>c.datasetIndex===0?' '+fmtC(c.parsed.y):' '+fmtU(c.parsed.y)+' uds',true),scales:{x:{ticks:{color:tc,font:{size:11},maxTicksLimit:8,autoSkip:true},grid:{color:gc}},y:{ticks:{color:tc,font:{size:11},callback:v=>fmtM(v)},grid:{color:gc}},y2:{ticks:{color:'#BA7517',font:{size:11},callback:v=>fmtU(v)},grid:{display:false},position:'right'}}}});
+  charts.vDias=new Chart(document.getElementById('cDias'),{type:'bar',data:{labels:DIAS_L,datasets:[{label:'Ventas s/imp',data:DIAS.map(d=>byD[d]),backgroundColor:COL_DIAS,borderColor:COL_DIAS_BORDER,borderWidth:2,borderRadius:4,borderSkipped:false,yAxisID:'y'},{label:'Unidades',data:DIAS.map(d=>byDu[d]),type:'line',borderColor:'#1a1a18',backgroundColor:'transparent',pointBackgroundColor:COL_DIAS_BORDER,pointBorderColor:'#fff',pointBorderWidth:2,pointRadius:6,borderWidth:2.5,yAxisID:'y2'}]},options:{...baseV(c=>c.datasetIndex===0?' '+fmtC(c.parsed.y):' '+fmtU(c.parsed.y)+' uds',true),layout:{padding:{top:10}}},plugins:[{
+    id:'diasBoxLabels',
+    afterDatasetsDraw(chart){
+      const {ctx,data}=chart;
+      const meta=chart.getDatasetMeta(0);
+      meta.data.forEach((bar,i)=>{
+        const val=data.datasets[0].data[i];
+        const uds=(data.datasets[1]&&data.datasets[1].data[i])||0;
+        const col=COL_DIAS_BORDER[i]||'#534AB7';
+        const bh=bar.base-bar.y;
+        if(bh<40)return;
+        const cx=bar.x, cy=bar.y+bh/2;
+        const bW=94,bH=40,rad=6;
+        ctx.save();
+        ctx.shadowColor='rgba(0,0,0,0.12)';
+        ctx.shadowBlur=6;
+        ctx.fillStyle='rgba(255,255,255,0.93)';
+        ctx.strokeStyle=col;
+        ctx.lineWidth=1.5;
+        ctx.beginPath();
+        ctx.roundRect(cx-bW/2,cy-bH/2,bW,bH,rad);
+        ctx.fill();
+        ctx.shadowBlur=0;
+        ctx.stroke();
+        ctx.fillStyle='#1a1a18';
+        ctx.font='bold 13px system-ui,sans-serif';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillText(fmtC(val),cx,cy-10);
+        ctx.fillStyle=col;
+        ctx.font='600 11px system-ui,sans-serif';
+        ctx.fillText(fmtU(uds)+' uds',cx,cy+10);
+        ctx.restore();
+      });
+    }
+  }]});
+  // cHoras built by renderHoras()
   const byP={},byPu={};f.forEach(r=>{byP[r[4]]=(byP[r[4]]||0)+r[0];byPu[r[4]]=(byPu[r[4]]||0)+r[8];});
   const tP=Object.entries(byP).sort((a,b)=>b[1]-a[1]).slice(0,12);
   document.getElementById('pdv-wrap').style.height=Math.max(180,tP.length*24)+'px';
-  charts.vPDV=new Chart(document.getElementById('cPDV'),{type:'bar',data:{labels:tP.map(([k])=>shrt(k)),datasets:[{data:tP.map(([,v])=>v),backgroundColor:tP.map((_,i)=>COL_PDV[i%COL_PDV.length]),borderRadius:3,borderSkipped:false}]},options:baseH(c=>{const u=byPu[tP[c.dataIndex][0]]||0;return ' '+fmtC(c.parsed.x)+(u?'  ·  '+fmtU(u)+' uds':'');})});
+  charts.vPDV=new Chart(document.getElementById('cPDV'),{type:'bar',data:{labels:tP.map(([k])=>shrt(k)),datasets:[{data:tP.map(([,v])=>v),backgroundColor:tP.map((_,i)=>COL_PDV[i%COL_PDV.length]+'8C'),borderColor:tP.map((_,i)=>COL_PDV[i%COL_PDV.length]),borderWidth:1.5,borderRadius:3,borderSkipped:false}]},options:{...baseH(c=>{const u=byPu[tP[c.dataIndex][0]]||0;return ' '+fmtC(c.parsed.x)+(u?'  ·  '+fmtU(u)+' uds':'');}),layout:{padding:{right:8}}},plugins:[{
+    id:'pdvBoxLabel',
+    afterDatasetsDraw(chart){
+      const {ctx,data}=chart;
+      const meta=chart.getDatasetMeta(0);
+      meta.data.forEach((bar,i)=>{
+        const val=data.datasets[0].data[i];
+        const uds=byPu[tP[i][0]]||0;
+        const bw=bar.x-bar.base;
+        if(bw<40)return;
+        const col=COL_PDV[i%COL_PDV.length];
+        const bH=bar.height*0.72, rad=4;
+        const bX=bar.base, bY=bar.y+(bar.height-bH)/2;
+        const bW=bw;
+        const text=fmtC(val)+'  ·  '+fmtU(uds)+' uds';
+        ctx.save();
+        ctx.fillStyle='rgba(255,255,255,0.88)';
+        ctx.strokeStyle=col+'80';ctx.lineWidth=1;
+        ctx.beginPath();ctx.roundRect(bX,bY,bW,bH,rad);
+        ctx.fill();ctx.stroke();
+        ctx.fillStyle='#1a1a18';
+        ctx.font='bold 12px system-ui,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(text,bX+bW/2,bY+bH/2);
+        ctx.restore();
+      });
+    }
+  }]});
   const byG={},byGu={};f.forEach(r=>{byG[r[6]]=(byG[r[6]]||0)+r[0];byGu[r[6]]=(byGu[r[6]]||0)+r[8];});
   const gE=Object.entries(byG).sort((a,b)=>b[1]-a[1]);
-  charts.vGen=new Chart(document.getElementById('cGen'),{type:'bar',data:{labels:gE.map(([k])=>k),datasets:[{label:'Ventas s/imp',data:gE.map(([,v])=>v),backgroundColor:gE.map(([k])=>COL_GEN[k]||'#888'),borderRadius:5,borderSkipped:false,yAxisID:'y'},{label:'Unidades',data:gE.map(([k])=>byGu[k]||0),type:'line',borderColor:'#EF9F27',backgroundColor:'transparent',pointBackgroundColor:'#EF9F27',pointRadius:5,borderWidth:2,yAxisID:'y2'}]},options:baseV(c=>c.datasetIndex===0?' '+fmtC(c.parsed.y):' '+fmtU(c.parsed.y)+' uds',true)});
+  // Custom inline label plugin for cGen — draws a label box in the center of each bar
+  const vGenLabelPlugin = {
+    id:'vGenLabel',
+    afterDatasetsDraw(chart){
+      const {ctx, data, scales:{y}} = chart;
+      const barDs = chart.getDatasetMeta(0);
+      barDs.data.forEach((bar, i)=>{
+        const val   = data.datasets[0].data[i];
+        const uds   = data.datasets[1] ? data.datasets[1].data[i] : 0;
+        const label = gE[i] ? gE[i][0] : '';
+        const col   = COL_GEN[label] || '#888';
+        const bx=bar.x, by=bar.y, bh=bar.base-bar.y;
+        if(bh < 52) return; // skip if bar too short
+        const cx=bx, cy=by + bh/2;
+        const boxW=84, boxH=38, r=6;
+        // Draw rounded rect
+        ctx.save();
+        ctx.fillStyle='rgba(255,255,255,0.90)';
+        ctx.strokeStyle=col;
+        ctx.lineWidth=1.5;
+        ctx.beginPath();
+        ctx.roundRect(cx-boxW/2, cy-boxH/2, boxW, boxH, r);
+        ctx.fill(); ctx.stroke();
+        // Venta line
+        ctx.fillStyle='#1a1a18';
+        ctx.font='bold 12px system-ui,sans-serif';
+        ctx.textAlign='center';
+        ctx.textBaseline='middle';
+        ctx.fillText(fmtC(val), cx, cy-9);
+        // Units line
+        ctx.fillStyle=col;
+        ctx.font='11px system-ui,sans-serif';
+        ctx.fillText(fmtU(uds)+' uds', cx, cy+9);
+        ctx.restore();
+      });
+    }
+  };
+
+  charts.vGen=new Chart(document.getElementById('cGen'),{type:'bar',data:{labels:gE.map(([k])=>k),datasets:[
+    {label:'Ventas s/imp',
+     data:gE.map(([,v])=>v),
+     backgroundColor:gE.map(([k])=>{ const c=COL_GEN[k]||'#888'; return c.startsWith('#')?c+'8C':c; }),
+     borderColor:gE.map(([k])=>COL_GEN[k]||'#888'),
+     borderWidth:2, borderRadius:4, borderSkipped:false, yAxisID:'y'},
+    {label:'Unidades',
+     data:gE.map(([k])=>byGu[k]||0),
+     type:'line',
+     borderColor:'#1a1a18', backgroundColor:'transparent',
+     pointBackgroundColor:gE.map(([k])=>COL_GEN[k]||'#888'),
+     pointBorderColor:'#fff', pointBorderWidth:2, pointRadius:6,
+     borderWidth:2.5, yAxisID:'y2'}
+  ]},options:{...baseV(c=>c.datasetIndex===0?' '+fmtC(c.parsed.y):' '+fmtU(c.parsed.y)+' uds',true),
+    layout:{padding:{top:8}}
+  }, plugins:[vGenLabelPlugin]});
   const tv2=gE.reduce((s,[,v])=>s+v,0);
-  charts.vGenPie=new Chart(document.getElementById('cGenPie'),{type:'doughnut',data:{labels:gE.map(([k])=>k),datasets:[{data:gE.map(([,v])=>v),backgroundColor:gE.map(([k])=>COL_GEN[k]||'#888'),borderWidth:0,hoverOffset:5}]},options:{responsive:true,maintainAspectRatio:false,cutout:'56%',plugins:{legend:{display:true,position:'right',labels:{color:tc,font:{size:12},boxWidth:14,padding:12}},tooltip:{callbacks:{label:c=>' '+fmtC(c.parsed)+' ('+(c.parsed/tv2*100).toFixed(1)+'%)'}}}}});
+  charts.vGenPie=new Chart(document.getElementById('cGenPie'),{type:'doughnut',data:{labels:gE.map(([k])=>k),datasets:[{data:gE.map(([,v])=>v),backgroundColor:gE.map(([k])=>(COL_GEN[k]||'#888')+'8C'),borderColor:gE.map(([k])=>COL_GEN[k]||'#888'),borderWidth:2,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'56%',plugins:{legend:{display:true,position:'right',labels:{color:tc,font:{size:12},boxWidth:14,padding:12}},tooltip:{callbacks:{label:c=>' '+fmtC(c.parsed)+' ('+(c.parsed/tv2*100).toFixed(1)+'%)'}}}},plugins:[{
+    id:'pieBoxLabels',
+    afterDatasetsDraw(chart){
+      const {ctx,data}=chart;
+      const meta=chart.getDatasetMeta(0);
+      const total=data.datasets[0].data.reduce((s,v)=>s+v,0);
+      meta.data.forEach((arc,i)=>{
+        const val=data.datasets[0].data[i];
+        const label=data.labels[i];
+        const uds=byGu[label]||0;
+        const col=COL_GEN[label]||'#888';
+        // midpoint angle of this arc
+        const midAngle=arc.startAngle+(arc.endAngle-arc.startAngle)/2;
+        // place box at 72% of outer radius along the midAngle
+        const r=(arc.outerRadius+arc.innerRadius)/2;
+        const cx=arc.x+Math.cos(midAngle)*r;
+        const cy=arc.y+Math.sin(midAngle)*r;
+        // skip tiny slices
+        const pct=val/total;
+        if(pct<0.04)return;
+        const bW=110, bH=38, rad=5;
+        ctx.save();
+        ctx.fillStyle='rgba(255,255,255,0.92)';
+        ctx.strokeStyle=col;ctx.lineWidth=1.5;
+        ctx.beginPath();ctx.roundRect(cx-bW/2,cy-bH/2,bW,bH,rad);
+        ctx.fill();ctx.stroke();
+        // $ value
+        ctx.fillStyle='#1a1a18';
+        ctx.font='bold 12px system-ui,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(fmtC(val),cx,cy-9);
+        // uds
+        ctx.fillStyle=col;
+        ctx.font='600 11px system-ui,sans-serif';
+        ctx.fillText(fmtU(uds)+' uds',cx,cy+9);
+        ctx.restore();
+      });
+    }
+  }]});
   const byE={},byEu={};f.forEach(r=>{byE[r[5]]=(byE[r[5]]||0)+r[0];byEu[r[5]]=(byEu[r[5]]||0)+r[8];});
   const eE=Object.entries(byE).sort((a,b)=>b[1]-a[1]);
   document.getElementById('esp-wrap').style.height=Math.max(240,eE.length*24)+'px';
-  charts.vEsp=new Chart(document.getElementById('cEsp'),{type:'bar',data:{labels:eE.map(([k])=>k),datasets:[{label:'Ventas s/imp',data:eE.map(([,v])=>v),backgroundColor:eE.map((_,i)=>COL_ESP[i%COL_ESP.length]),borderRadius:3,borderSkipped:false,yAxisID:'y'},{label:'Unidades',data:eE.map(([k])=>byEu[k]||0),type:'line',borderColor:'#EF9F27',backgroundColor:'transparent',pointBackgroundColor:'#EF9F27',pointRadius:3,borderWidth:2,yAxisID:'y2'}]},options:{...baseH(),indexAxis:'y',plugins:{legend:{display:true,position:'top',labels:{color:tc,font:{size:12},boxWidth:12,padding:10}},tooltip:{callbacks:{label:c=>c.datasetIndex===0?' '+fmtC(c.parsed.x):' '+fmtU(c.parsed.x)+' uds'}}},scales:{x:{ticks:{color:tc,font:{size:12},callback:v=>fmtM(v)},grid:{color:gc}},y:{ticks:{color:tc,font:{size:12}},grid:{color:'transparent'}},y2:{display:false}}}});
+  charts.vEsp=new Chart(document.getElementById('cEsp'),{type:'bar',data:{labels:eE.map(([k])=>k),datasets:[{label:'Ventas s/imp',data:eE.map(([,v])=>v),backgroundColor:eE.map((_,i)=>{ const c=COL_ESP[i%COL_ESP.length]; return c+'8C'; }),borderColor:eE.map((_,i)=>COL_ESP[i%COL_ESP.length]),borderWidth:1.5,borderRadius:3,borderSkipped:false,yAxisID:'y'},{label:'Unidades',data:eE.map(([k])=>byEu[k]||0),type:'line',borderColor:'#EF9F27',backgroundColor:'transparent',pointBackgroundColor:'#EF9F27',pointRadius:3,borderWidth:2,yAxisID:'y2'}]},options:{...baseH(),indexAxis:'y',layout:{padding:{right:8}},plugins:{legend:{display:true,position:'top',labels:{color:tc,font:{size:12},boxWidth:12,padding:10}},tooltip:{callbacks:{label:c=>c.datasetIndex===0?' '+fmtC(c.parsed.x):' '+fmtU(c.parsed.x)+' uds'}}},scales:{x:{ticks:{color:tc,font:{size:12},callback:v=>fmtM(v)},grid:{color:gc}},y:{ticks:{color:tc,font:{size:12}},grid:{color:'transparent'}},y2:{display:false}}},plugins:[{
+    id:'espBoxLabel',
+    afterDatasetsDraw(chart){
+      const {ctx,data}=chart;
+      const meta=chart.getDatasetMeta(0);
+      meta.data.forEach((bar,i)=>{
+        const val=data.datasets[0].data[i];
+        const uds=byEu[eE[i][0]]||0;
+        // horizontal bar: bar.x is right edge, bar.base is left edge
+        const bw=bar.x-bar.base;
+        if(bw<40)return;
+        const col=COL_ESP[i%COL_ESP.length]||'#534AB7';
+        const bH=bar.height*0.72, rad=4;
+        const bX=bar.base, bY=bar.y+(bar.height-bH)/2;
+        const bW=bw;
+        const text=fmtC(val)+'  ·  '+fmtU(uds)+' uds';
+        ctx.save();
+        ctx.fillStyle='rgba(255,255,255,0.88)';
+        ctx.strokeStyle=col+'80';ctx.lineWidth=1;
+        ctx.beginPath();ctx.roundRect(bX,bY,bW,bH,rad);
+        ctx.fill();ctx.stroke();
+        ctx.fillStyle='#1a1a18';
+        ctx.font='bold 12px system-ui,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(text,bX+bW/2,bY+bH/2);
+        ctx.restore();
+      });
+    }
+  }]});
   const byPr={},byPru={};f.forEach(r=>{byPr[r[7]]=(byPr[r[7]]||0)+r[0];byPru[r[7]]=(byPru[r[7]]||0)+r[8];});
   const tV=Object.entries(byPr).sort((a,b)=>b[1]-a[1]).slice(0,10);
   const tU=Object.entries(byPru).sort((a,b)=>b[1]-a[1]).slice(0,10);
-  charts.vPrV=new Chart(document.getElementById('cProdV'),{type:'bar',data:{labels:tV.map(([k])=>k),datasets:[{data:tV.map(([,v])=>v),backgroundColor:'#534AB7',borderRadius:3,borderSkipped:false}]},options:baseH(c=>{const u=byPru[tV[c.dataIndex][0]]||0;return ' '+fmtC(c.parsed.x)+(u?'  ·  '+fmtU(u)+' uds':'');})});
-  charts.vPrU=new Chart(document.getElementById('cProdU'),{type:'bar',data:{labels:tU.map(([k])=>k),datasets:[{data:tU.map(([,v])=>v),backgroundColor:'#EF9F27',borderRadius:3,borderSkipped:false}]},options:{...baseH(),plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtU(c.parsed.x)+' uds'}}},scales:{x:{ticks:{color:tc,font:{size:12},callback:v=>fmtU(v)},grid:{color:gc}},y:{ticks:{color:tc,font:{size:12}},grid:{color:'transparent'}}}}});
+  charts.vPrV=new Chart(document.getElementById('cProdV'),{type:'bar',data:{labels:tV.map(([k])=>k),datasets:[{data:tV.map(([,v])=>v),backgroundColor:'#534AB7',borderRadius:3,borderSkipped:false}]},options:{...baseH(c=>{const u=byPru[tV[c.dataIndex][0]]||0;return ' '+fmtC(c.parsed.x)+(u?'  ·  '+fmtU(u)+' uds':'');}),layout:{padding:{right:8}}},plugins:[{
+    id:'prodVBoxLabel',
+    afterDatasetsDraw(chart){
+      const {ctx,data}=chart;
+      const meta=chart.getDatasetMeta(0);
+      meta.data.forEach((bar,i)=>{
+        const val=data.datasets[0].data[i];
+        const uds=byPru[tV[i][0]]||0;
+        const bw=bar.x-bar.base;
+        if(bw<40)return;
+        // Box sits AT the end of the bar, same width as bar, centered vertically
+        const bH=bar.height*0.72, rad=4;
+        const bX=bar.base, bY=bar.y+(bar.height-bH)/2;
+        const bW=bw;
+        // text
+        const text=fmtC(val)+'  ·  '+fmtU(uds)+' uds';
+        ctx.save();
+        ctx.fillStyle='rgba(255,255,255,0.88)';
+        ctx.strokeStyle='rgba(83,74,183,0.5)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.roundRect(bX,bY,bW,bH,rad);
+        ctx.fill();ctx.stroke();
+        ctx.fillStyle='#1a1a18';
+        ctx.font='bold 12px system-ui,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(text,bX+bW/2,bY+bH/2);
+        ctx.restore();
+      });
+    }
+  }]});
+  charts.vPrU=new Chart(document.getElementById('cProdU'),{type:'bar',data:{labels:tU.map(([k])=>k),datasets:[{data:tU.map(([,v])=>v),backgroundColor:'#EF9F27',borderRadius:3,borderSkipped:false}]},options:{...baseH(c=>{const v=byPr[tU[c.dataIndex][0]]||0;return ' '+fmtU(c.parsed.x)+' uds'+(v?'  ·  '+fmtC(v):'');}),layout:{padding:{right:8}}},plugins:[{
+    id:'prodUBoxLabel',
+    afterDatasetsDraw(chart){
+      const {ctx,data}=chart;
+      const meta=chart.getDatasetMeta(0);
+      meta.data.forEach((bar,i)=>{
+        const uds=data.datasets[0].data[i];
+        const cop=byPr[tU[i][0]]||0;
+        const bw=bar.x-bar.base;
+        if(bw<40)return;
+        const bH=bar.height*0.72, rad=4;
+        const bX=bar.base, bY=bar.y+(bar.height-bH)/2;
+        const bW=bw;
+        const text=fmtU(uds)+' uds  ·  '+fmtC(cop);
+        ctx.save();
+        ctx.fillStyle='rgba(255,255,255,0.88)';
+        ctx.strokeStyle='rgba(239,159,39,0.5)';ctx.lineWidth=1;
+        ctx.beginPath();ctx.roundRect(bX,bY,bW,bH,rad);
+        ctx.fill();ctx.stroke();
+        ctx.fillStyle='#1a1a18';
+        ctx.font='bold 12px system-ui,sans-serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(text,bX+bW/2,bY+bH/2);
+        ctx.restore();
+      });
+    }
+  }]});
 }
 
 let alBuilt=false;
@@ -541,6 +815,91 @@ function buildEmp(){
   charts.eCPDV=new Chart(document.getElementById('ecCortPDV'),{type:'bar',data:{labels:tCP.map(([k])=>shrt(k)),datasets:[{data:tCP.map(([,v])=>v),backgroundColor:'#D85A30',borderRadius:3,borderSkipped:false}]},options:baseH()});
 }
 
+function renderHoras(){
+  const f = window._fHoras || [];
+  const checks = document.querySelectorAll('#horas-filter input[type=checkbox]');
+  const sel = [...checks].filter(c=>c.checked).map(c=>c.value);
+  const COL_MAP = {BAR:'#534AB7', FOOD:'#1D9E75', 'RECEPCIÓN':'#EF9F27'};
+  const BG_MAP  = {BAR:'rgba(83,74,183,.12)', FOOD:'rgba(29,158,117,.12)', 'RECEPCIÓN':'rgba(239,159,39,.12)'};
+
+  // Style the checkbox labels
+  checks.forEach(c=>{
+    const lbl=c.closest('label');
+    if(c.checked){
+      lbl.style.background=COL_MAP[c.value]||'#534AB7';
+      lbl.style.color='#fff';
+      lbl.style.borderColor=COL_MAP[c.value]||'#534AB7';
+    } else {
+      lbl.style.background='#fff'; lbl.style.color='#333'; lbl.style.borderColor='#ccc';
+    }
+  });
+
+  // Determine which categories to draw
+  // None checked → show all as a single combined line
+  const cats = sel.length > 0 ? sel : null;
+
+  // Build datasets: one Ventas line + one Unidades line per category
+  const datasets = [];
+  const activeCats = cats || ['TOTAL'];
+
+  if(!cats){
+    // Single combined line
+    const byH={}, byHu={};
+    HORAS.forEach(h=>{byH[h]=0; byHu[h]=0;});
+    f.forEach(r=>{byH[r[2]]=(byH[r[2]]||0)+r[0]; byHu[r[2]]=(byHu[r[2]]||0)+r[8];});
+    datasets.push({label:'Ventas (Total)',data:HORAS.map(h=>byH[h]),borderColor:'#534AB7',backgroundColor:'rgba(83,74,183,.12)',fill:true,tension:.4,pointRadius:0,borderWidth:2.5,yAxisID:'y'});
+    datasets.push({label:'Uds (Total)',data:HORAS.map(h=>byHu[h]),borderColor:'#EF9F27',backgroundColor:'transparent',tension:.4,pointRadius:0,borderWidth:2,borderDash:[5,3],yAxisID:'y2'});
+  } else {
+    // One pair of lines per selected category
+    sel.forEach(cat=>{
+      const col = COL_MAP[cat]||'#888';
+      const bg  = BG_MAP[cat]||'rgba(136,136,136,.1)';
+      const byH={}, byHu={};
+      HORAS.forEach(h=>{byH[h]=0; byHu[h]=0;});
+      f.filter(r=>r[6]===cat).forEach(r=>{byH[r[2]]=(byH[r[2]]||0)+r[0]; byHu[r[2]]=(byHu[r[2]]||0)+r[8];});
+      datasets.push({
+        label:'Ventas '+cat,
+        data:HORAS.map(h=>byH[h]),
+        borderColor:col, backgroundColor:bg,
+        fill:sel.length===1, tension:.4, pointRadius:0, borderWidth:2.5, yAxisID:'y'
+      });
+      datasets.push({
+        label:'Uds '+cat,
+        data:HORAS.map(h=>byHu[h]),
+        borderColor:col, backgroundColor:'transparent',
+        tension:.4, pointRadius:0, borderWidth:1.8, borderDash:[5,3], yAxisID:'y2'
+      });
+    });
+  }
+
+  if(charts.vHoras) charts.vHoras.destroy();
+  charts.vHoras = new Chart(document.getElementById('cHoras'),{
+    type:'line',
+    data:{labels:HORAS.map(h=>h+'h'), datasets},
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:true, position:'top', labels:{color:tc, font:{size:12}, boxWidth:14, padding:12,
+          filter: item => !item.text.startsWith('Uds ')  // show only ventas lines in legend; uds implied
+        }},
+        tooltip:{
+          callbacks:{
+            label: c => {
+              const isUds = c.dataset.label.startsWith('Uds ');
+              return isUds ? '  '+fmtU(c.parsed.y)+' uds — '+c.dataset.label.replace('Uds ','') : '  '+fmtC(c.parsed.y)+' — '+c.dataset.label.replace('Ventas ','');
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ticks:{color:tc,font:{size:11},maxTicksLimit:8,autoSkip:true},grid:{color:gc}},
+        y:{ticks:{color:tc,font:{size:11},callback:v=>fmtM(v)},grid:{color:gc},position:'left'},
+        y2:{ticks:{color:'#888',font:{size:11},callback:v=>fmtU(v)},grid:{display:false},position:'right'}
+      }
+    }
+  });
+}
+
 function switchTab(name,el){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
@@ -549,12 +908,13 @@ function switchTab(name,el){
   if(name==='aliados')   buildAliados();
   if(name==='cortesias') buildCort();
   if(name==='emp')       buildEmp();
+  if(name==='ventas' && window._fHoras) setTimeout(renderHoras, 50);
 }
 
 buildDD('gen',ALL_GEN);
 buildDD('esp',ALL_ESP);
 buildDD('pdv',ALL_PDV,shrt);
-renderVentas();
+requestAnimationFrame(()=>{ renderVentas(); });
 </script>
 </body>
 </html>
